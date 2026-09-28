@@ -171,7 +171,6 @@ unsafe impl Send for Front {}
 static FRONT: Mutex<Option<Front>> = Mutex::new(None);
 
 unsafe extern "C-unwind" fn flush_hook(this: *mut AnyObject, sel: Sel) {
-    crate::shim::refresh_runtime();
     let orig = *FLUSH.get().unwrap();
     let cgl = CGLGetCurrentContext();
     if !enabled() || cgl.is_null() {
