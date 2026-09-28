@@ -758,6 +758,7 @@ struct Stats {
 
 struct Worker {
     gen: &'static Generator,
+    layer: &'static crate::shim::Layer,
     setup: &'static Setup,
     backend: Option<Backend>,
     ctx: Option<Wrapper>,
@@ -778,8 +779,10 @@ struct Worker {
 
 impl Worker {
     fn new(gen: &'static Generator) -> Worker {
+        let layer = crate::shim::layer().expect("worker without a profile");
         Worker {
             gen,
+            layer,
             setup: setup().expect("worker without a profile"),
             backend: None,
             ctx: None,
@@ -797,7 +800,7 @@ impl Worker {
             dump_dir: std::env::var_os("LSFGM_METAL_DUMP")
                 .filter(|d| !d.is_empty())
                 .map(PathBuf::from),
-            runtime_revision: crate::shim::layer().map(|l| l.revision()).unwrap_or(0),
+            runtime_revision: layer.revision(),
         }
     }
 
@@ -826,7 +829,7 @@ impl Worker {
     fn process(&mut self, job: &mut Job) {
         job.latency.start();
 
-        let revision = crate::shim::layer().map(|l| l.revision()).unwrap_or(0);
+        let revision = self.layer.revision();
         if revision != self.runtime_revision {
             self.runtime_revision = revision;
             self.reset();
@@ -885,7 +888,7 @@ impl Worker {
             return Ok(());
         }
         self.reset();
-        let live = crate::shim::layer().map(|l| l.profile()).unwrap_or_else(|| self.setup.profile.clone());
+        let live = self.layer.profile();
         let p = &live;
         let m = p.multiplier;
         let adaptive = p.pacing_mode == PacingMode::Adaptive;
@@ -1071,9 +1074,7 @@ impl Worker {
                 trusted: true,
             };
         }
-        let m = crate::shim::layer()
-            .map(|l| l.profile().multiplier)
-            .unwrap_or(self.setup.profile.multiplier);
+        let m = self.layer.profile().multiplier;
         let slots: Vec<f64> = match &mut self.pacer {
             Some(p) => p.slots(job.sample),
             None => (1..=m).map(|i| i as f64 / m as f64).collect(),
