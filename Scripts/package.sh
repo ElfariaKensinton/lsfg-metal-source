@@ -8,7 +8,15 @@ version="${LSFGM_VERSION:-$(git describe --tags --always --dirty 2>/dev/null || 
 rm -rf "$out"
 mkdir -p "$out"
 cp target/x86_64-apple-darwin/release/liblsfg_metal.dylib "$out/libMoltenVK.dylib"
-ln -s ../../frameworks/libMoltenVK.dylib "$out/libMoltenVK.real.dylib"
+
+real_driver="${LSFGM_MOLTENVK:-dist/frameworks/libMoltenVK.dylib}"
+if [ -f "$real_driver" ]; then
+  cp "$real_driver" "$out/libMoltenVK.real.dylib"
+  echo "packaged real MoltenVK: $real_driver"
+else
+  echo "note: real MoltenVK not packaged; set LSFGM_MOLTENVK when launching the shim" >&2
+fi
+
 cp LICENSE "$out/LICENSE"
 printf '%s\n' "lsfg-metal $version" "Source: https://github.com/itsOwen/lsfg-metal" "License: MIT (see LICENSE)" > "$out/source.txt"
 
