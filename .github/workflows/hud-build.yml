@@ -5,11 +5,12 @@ on:
     paths:
       - "hud/**"
       - "control/**"
-      - "src/shim/**"
-      - "src/bin/lsfg-control.rs"
+      - "src/**"
       - "Cargo.toml"
+      - "Cargo.lock"
       - "Scripts/build-hud.sh"
       - "Scripts/build-control.sh"
+      - "Scripts/package.sh"
       - ".github/workflows/hud-build.yml"
 
 jobs:
@@ -26,12 +27,18 @@ jobs:
         run: |
           sh -n Scripts/build-hud.sh
           sh -n Scripts/build-control.sh
+          sh -n Scripts/package.sh
 
       - name: Build HUD package
         run: ./Scripts/build-hud.sh
 
-      - name: Build settings GUI package
+      - name: Build settings GUI and shim package
         run: ./Scripts/build-control.sh
+
+      - name: Verify x86_64 shim
+        run: |
+          file dist/renderers/lsfg/libMoltenVK.dylib
+          test -s dist/renderers/lsfg/libMoltenVK.dylib
 
       - name: Upload macOS companion builds
         uses: actions/upload-artifact@v4
@@ -40,5 +47,6 @@ jobs:
           path: |
             dist/LSFG Metal Control.app
             dist/tools/LSFGMetalHUD
+            dist/renderers/lsfg
           if-no-files-found: error
           compression-level: 6
