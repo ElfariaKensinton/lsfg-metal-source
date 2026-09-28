@@ -488,56 +488,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         reloadConfig(showError: true)
     }
 
-    @objc private func refreshTargetsPressed() {
-        refreshLiveTargets()
-    }
-
-    @objc private func revertLivePressed() {
-        guard let pid = selectedTargetPID else {
-            status("Select a running target first.", error: true)
-            return
-        }
-
-        switch runHelper(["clear", String(pid)]) {
-        case .success(let output):
-            guard !output.hasPrefix("ERR ") else {
-                status(String(output.dropFirst(4)), error: true)
-                return
-            }
-            if let section = currentSection() {
-                selectCurrentValues(store.values(for: section))
-            }
-            status("Live override cleared for PID (pid). The config profile is active again.", error: false)
-            refreshLiveTargets()
-        case .failure(let error):
-            status(error.localizedDescription, error: true)
-        }
-    }
-
-    @objc private func targetChanged(_ sender: Any?) {
-        guard let pid = selectedTargetPID else {
-            if let section = currentSection() {
-                selectCurrentValues(store.values(for: section))
-                status("Editing the config file without a live target.", error: false)
-            }
-            return
-        }
-
-        switch runHelper(["get", String(pid)]) {
-        case .success(let output):
-            let targets = parseLiveTargets("\(pid)\t" + String(output.dropFirst(3)))
-            if let target = targets.first {
-                applyLiveTargetToControls(target)
-            } else {
-                status("Could not read the live target settings.", error: true)
-            }
-        case .failure(let error):
-            status(error.localizedDescription, error: true)
-        }
-    }
-
     @objc private func profileChanged(_ sender: Any?) {
-        guard selectedTargetPID == nil, let section = currentSection() else { return }
+        guard let section = currentSection() else { return }
         let values = store.values(for: section)
         selectCurrentValues(values)
         profileInfo.stringValue = "Selected profile: \(section.name)."
@@ -549,12 +501,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         write(key: "multiplier", value: "\(value)", description: "Multiplier changed to \(value)×")
     }
 
-
     @objc private func scalerChanged() {
         let enabled = scalerPopup.indexOfSelectedItem == 1
         write(
             key: "scaler",
-            value: enabled ? ""metalfx"" : ""off"",
+            value: enabled ? "\"metalfx\"" : "\"off\"",
             description: enabled ? "MetalFX scaler enabled" : "MetalFX scaler disabled"
         )
     }
@@ -582,22 +533,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             key: "pacing_mode",
             value: adaptive ? "\"adaptive\"" : "\"vsync\"",
             description: adaptive ? "Adaptive pacing enabled" : "Fixed pacing enabled"
-        )
-    }
-
-    @objc private func overrideChanged() {
-        write(
-            key: "override_present_mode",
-            value: overridePresent.state == .on ? "true" : "false",
-            description: "Present override \(overridePresent.state == .on ? "enabled" : "disabled")"
-        )
-    }
-
-    @objc private func preserveChanged() {
-        write(
-            key: "preserve_swapchain_image_count",
-            value: preserveCount.state == .on ? "true" : "false",
-            description: "Swapchain image preservation \(preserveCount.state == .on ? "enabled" : "disabled")"
         )
     }
 
