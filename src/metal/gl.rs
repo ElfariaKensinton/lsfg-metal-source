@@ -103,9 +103,7 @@ static FLUSH: OnceLock<FlushFn> = OnceLock::new();
 
 // swizzle -[NSOpenGLContext flushBuffer]; the original is published before the swap
 pub fn install() {
-    // Keep the hook installed even when the current profile is disabled so a
-    // live GUI change can enable generation without restarting the process.
-    if FLUSH.get().is_some() || setup().is_none() {
+    if FLUSH.get().is_some() || setup().is_none_or(|s| s.profile.multiplier < 2) {
         return;
     }
     let Some(m) =
@@ -161,7 +159,6 @@ struct Front {
     contexts: HashMap<usize, Context>,
     // contexts that fell back to native swaps, including ones whose setup failed
     failed: HashSet<usize>,
-    runtime_revision: u32,
 }
 
 // metal textures and iosurfaces are thread-safe objects; every access goes through FRONT's lock
@@ -271,28 +268,17 @@ unsafe fn generate(
     entered: f64,
     present: impl Fn(),
 ) -> Result<(), String> {
-    let setup = setup().ok_or("no active frame-generation setup")?;
-    let p = crate::shim::runtime_profile().ok_or("no active frame-generation profile")?;
-    let revision = crate::shim::runtime_revision();
-
-    if front.backend.is_none() {
-        front.backend = Some(Backend::create(setup)?);
-    }
-    let b = front.backend.as_ref().unwrap();
-
-    if front.runtime_revision != revision {
-        for (_, old) in front.contexts.drain() {
-            old.destroy(b);
-        }
-        front.failed.clear();
-        front.runtime_revision = revision;
-    }
-
+    let s = setup().ok_or("no active frame-generation profile")?;
+    let p = &s.profile;
     let key = cgl as usize;
     if front.failed.contains(&key) {
         present();
         return Ok(());
     }
+    if front.backend.is_none() {
+        front.backend = Some(Backend::create(s)?);
+    }
+    let b = front.backend.as_ref().unwrap();
     if front.contexts.get(&key).is_none_or(|c| c.extent != extent) {
         if let Some(old) = front.contexts.remove(&key) {
             old.destroy(b);
