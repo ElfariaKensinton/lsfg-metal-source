@@ -2,7 +2,6 @@
 mod chain;
 mod chain_sizes;
 mod context;
-mod control;
 mod fixed;
 mod proxy;
 mod sync;
@@ -228,7 +227,6 @@ struct LayerState {
     profile: usize,
     revision: u32,
     watcher: Option<settings::Watcher>,
-    live_profile: Option<settings::Profile>,
 }
 
 fn level(l: settings::LogLevel) -> log::Level {
@@ -242,32 +240,8 @@ fn level(l: settings::LogLevel) -> log::Level {
 
 static LAYER: OnceLock<Option<Layer>> = OnceLock::new();
 
-
-pub fn refresh_runtime() {
-    if let Some(l) = layer() {
-        let changed = match l.refresh() {
-            Ok(changed) => changed,
-            Err(e) => {
-                warn!("Keeping the previous frame-generation profile: {e}");
-                false
-            }
-        };
-        if changed {
-            crate::metal::set_enabled(l.multiplier() > 1);
-        }
-    }
-}
-
-pub fn runtime_revision() -> u32 {
-    layer().map(|l| l.revision()).unwrap_or(0)
-}
-
-pub fn runtime_profile() -> Option<settings::Profile> {
-    layer().map(|l| l.profile())
-}
-
 pub fn layer() -> Option<&'static Layer> {
-    let layer = LAYER
+    LAYER
         .get_or_init(|| {
             let l = match Layer::new() {
                 Ok(l) => l,
@@ -282,13 +256,7 @@ pub fn layer() -> Option<&'static Layer> {
             crate::metal::init(crate::metal::Setup::new(l.profile(), allow_fp16, dll));
             Some(l)
         })
-        .as_ref();
-    if std::env::var_os("LSFGM_CONTROL").is_some() {
-        if let Some(layer) = layer {
-            control::start(layer);
-        }
-    }
-    layer
+        .as_ref()
 }
 
 impl Layer {
@@ -332,73 +300,14 @@ impl Layer {
                 profile,
                 revision: 0,
                 watcher,
-                live_profile: None,
             }),
         }))
     }
 
     pub fn profile(&self) -> settings::Profile {
         let s = self.state.lock().unwrap();
-        s.live_profile
-            .clone()
-            .unwrap_or_else(|| s.config.profiles[s.profile].clone())
+        s.config.profiles[s.profile].clone()
     }
-
-    pub(crate) fn clear_live_profile(&self) {
-        let mut s = self.state.lock().unwrap();
-        if s.live_profile.take().is_some() {
-            s.revision += 1;
-            let enabled = s.config.profiles[s.profile].multiplier > 1;
-            drop(s);
-            crate::metal::set_enabled(enabled);
-        }
-    }
-
-    pub(crate) fn apply_live_changes(
-        &self,
-        changes: &[(String, String)],
-    ) -> Result<(), String> {
-        let mut s = self.state.lock().unwrap();
-        let mut p = s
-            .live_profile
-            .clone()
-            .unwrap_or_else(|| s.config.profiles[s.profile].clone());
-
-        for (key, value) in changes {
-            match key.as_str() {
-                "multiplier" => {
-                    let m: u32 = value.parse().map_err(|_| "invalid multiplier".to_string())?;
-                    if !(1..=4).contains(&m) {
-                        return Err("multiplier must be 1 to 4".into());
-                    }
-                    p.multiplier = m;
-                }
-                "flow_scale" => {
-                    let f: f32 = value.parse().map_err(|_| "invalid flow_scale".to_string())?;
-                    if !(0.25..=1.0).contains(&f) {
-                        return Err("flow_scale must be between 0.25 and 1.0".into());
-                    }
-                    p.flow_scale = f;
-                }
-                "performance_mode" => p.performance_mode = Self::parse_live_bool(value)?,
-                "pacing_mode" => p.pacing_mode = settings::PacingMode::parse(value)?,
-                "override_present_mode" => p.override_present_mode = Self::parse_live_bool(value)?,
-                "preserve_swapchain_image_count" => {
-                    p.preserve_swapchain_image_count = Self::parse_live_bool(value)?
-                }
-                _ => return Err(format!("unknown live setting '{key}'")),
-            }
-        }
-
-        p.name = s.config.profiles[s.profile].name.clone();
-        let enabled = p.multiplier > 1;
-        s.live_profile = Some(p);
-        s.revision += 1;
-        drop(s);
-        crate::metal::set_enabled(enabled);
-        Ok(())
-    }
-
 
     pub fn config<R>(&self, f: impl FnOnce(&settings::Config) -> R) -> R {
         f(&self.state.lock().unwrap().config)
@@ -409,26 +318,9 @@ impl Layer {
     }
 
     pub fn multiplier(&self) -> u32 {
-        self.profile().multiplier
+        let s = self.state.lock().unwrap();
+        s.config.profiles[s.profile].multiplier
     }
-
-    // Reload the active file-backed profile so non-Vulkan front ends can observe GUI edits too.
-    pub fn refresh(&self) -> Result<bool, String> {
-        let changed = self.update()?;
-        if changed {
-            let on = self.multiplier() > 1;
-            crate::metal::set_enabled(on);
-        }
-        Ok(changed)
-    }
-
-fn parse_live_bool(value: &str) -> Result<bool, String> {
-    match value {
-        "1" | "true" => Ok(true),
-        "0" | "false" => Ok(false),
-        _ => Err("boolean setting must be 0, 1, true, or false".into()),
-    }
-}
 
     // reload on file change; true when the active profile was replaced (revision bumped)
     pub fn update(&self) -> Result<bool, String> {
