@@ -410,6 +410,37 @@ or PFM for `RGBA16Float` (`PF\n<w> <h>\n-1.0\n` then bottom-to-top RGB float32 r
 `mtlclear` smoke test, whose white square moves 8 px per frame, the generated frames must show the
 square at intermediate positions. That is the check that the output is interpolation and not a copy.
 
+## HUD
+
+The repository now includes the macOS HUD used by the LSFG Metal installer as a standalone companion tool.
+It reads the same \`Frame generation stats\` lines emitted by the shim, calculates native/output/generated
+FPS, tracks the target process's main on-screen window, and keeps the panel positioned with drag/preset
+support. HUD settings are shared through:
+
+\`~/Library/Application Support/lsfg-metal/hud-settings.plist\`
+
+Build it with Swift/Xcode Command Line Tools:
+
+\`\`\`sh
+Scripts/build-hud.sh
+\`\`\`
+
+This produces:
+
+\`dist/tools/LSFGMetalHUD\`
+
+Run it against the same log file as the shim:
+
+\`\`\`sh
+LSFGM_STATS=1 LSFGM_LOG_FILE="$HOME/Library/Logs/lsfg-metal.log" \\
+  dist/tools/LSFGMetalHUD \\
+  --log "$HOME/Library/Logs/lsfg-metal.log" \\
+  --mult 2
+\`\`\`
+
+The HUD expects the log to contain \`Frame generation stats\` entries. \`--parent-pid <pid>\` is optional;
+when supplied, the HUD exits automatically after that process disappears.
+
 ## Building and packaging
 
 The shim is x86_64: Wine and your Wine build's MoltenVK run under Rosetta. `.cargo/config.toml` pins the
