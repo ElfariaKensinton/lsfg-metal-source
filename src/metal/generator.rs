@@ -826,7 +826,6 @@ impl Worker {
     fn process(&mut self, job: &mut Job) {
         job.latency.start();
 
-        crate::shim::refresh_runtime();
         let revision = crate::shim::runtime_revision();
         if revision != self.runtime_revision {
             self.runtime_revision = revision;
