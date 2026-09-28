@@ -243,7 +243,7 @@ fn level(l: settings::LogLevel) -> log::Level {
 static LAYER: OnceLock<Option<Layer>> = OnceLock::new();
 
 pub fn layer() -> Option<&'static Layer> {
-    LAYER
+    let layer = LAYER
         .get_or_init(|| {
             let l = match Layer::new() {
                 Ok(l) => l,
@@ -259,10 +259,19 @@ pub fn layer() -> Option<&'static Layer> {
             Some(l)
         })
         .as_ref();
+
     if let Some(layer_ref) = layer {
         control::start(layer_ref);
     }
     layer
+}
+
+fn parse_live_bool(value: &str) -> Result<bool, String> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "1" | "true" => Ok(true),
+        "0" | "false" => Ok(false),
+        _ => Err("boolean value must be true/false or 1/0".into()),
+    }
 }
 
 impl Layer {
