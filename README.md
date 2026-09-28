@@ -410,14 +410,15 @@ or PFM for `RGBA16Float` (`PF\n<w> <h>\n-1.0\n` then bottom-to-top RGB float32 r
 `mtlclear` smoke test, whose white square moves 8 px per frame, the generated frames must show the
 square at intermediate positions. That is the check that the output is interpolation and not a copy.
 
-## Live settings GUI
+## Upstream settings GUI
 
-The repository also includes a native macOS settings app that edits the same profile file used by the shim and
-can push settings directly into an already-running shim process.
+The repository also includes a native macOS settings app intended for the current `itsOwen/lsfg-metal`
+configuration format. It is a companion only: it does not patch or rebuild the frame-generation engine and
+does not inject a private runtime IPC layer.
 
-Controls include multiplier, flow scale, performance mode, pacing, present-mode/display-sync override, and
-swapchain image-count policy. Changes are applied immediately at the next frame boundary; no environment-variable
-editing is required.
+The GUI edits the standard profile file at `~/.config/lsfg-metal/conf.toml` (or the path selected in the app)
+and exposes the upstream-documented settings: multiplier, MetalFX scaler, flow scale, performance mode, and
+fixed/adaptive pacing. Restart the game after changing profile settings.
 
 Build it with Swift/Xcode Command Line Tools:
 
@@ -428,21 +429,6 @@ Scripts/build-control.sh
 Output:
 
 `dist/LSFG Metal Control.app`
-
-The GUI defaults to `$HOME/.config/lsfg-metal/conf.toml` (or `XDG_CONFIG_HOME/lsfg-metal/conf.toml`) and
-lets you choose another TOML file.
-
-For running processes the GUI uses a local per-process Unix socket:
-
-`/tmp/lsfg-metal-<pid>.sock`
-
-The socket is created with mode 0600 and is local-only. This live path also works when the process was launched
-with `LSFGM_ENV=1`, where normal config-file watching is intentionally disabled.
-
-Some settings are swapchain-creation properties. In particular, changing swapchain image-count policy or
-switching a Vulkan process from fixed pacing to adaptive pacing may require the game to recreate its swapchain.
-The other live profile values are consumed at the next frame boundary.
-
 
 ## HUD
 
