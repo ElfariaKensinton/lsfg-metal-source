@@ -205,6 +205,10 @@ private final class ConfigStore {
         let text = """
         version = 2
 
+        [global]
+        allow_fp16 = true
+        log_level = "info"
+
         [[profile]]
         name = "Default 2x"
         active_in = "000000"
