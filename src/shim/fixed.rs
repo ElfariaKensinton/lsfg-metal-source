@@ -205,6 +205,14 @@ impl Fixed {
         if changed {
             self.revision = layer.revision();
             self.ctx = None;
+            let live = layer.profile();
+            self.forced_fifo = live.override_present_mode;
+            if let Err(e) = self.grow(live.multiplier.saturating_sub(1) as usize) {
+                self.failed = true;
+                log::warn(&format!(
+                    "Frame generation disabled while applying live settings: {e}"
+                ));
+            }
             if std::mem::take(&mut self.failed) {
                 if let Err(e) = self.reset_semaphores() {
                     self.failed = true;
