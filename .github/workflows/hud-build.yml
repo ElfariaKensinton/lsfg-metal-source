@@ -1,0 +1,21 @@
+name: HUD build
+
+on:
+  pull_request:
+    paths:
+      - "hud/**"
+      - "Scripts/build-hud.sh"
+      - ".github/workflows/hud-build.yml"
+
+jobs:
+  build-hud:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate build script
+        run: sh -n Scripts/build-hud.sh
+
+      - name: Build HUD
+        run: swift build --package-path hud -c release
