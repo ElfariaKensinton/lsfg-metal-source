@@ -9,11 +9,10 @@ private struct ProfileSection {
 
 private struct ProfileValues {
     var multiplier: Int = 2
+    var scaler = "off"
     var flowScale: Double = 1.0
     var performanceMode = false
     var pacingMode = "vsync"
-    var overridePresentMode = true
-    var preserveSwapchainImageCount = false
 }
 
 private struct LiveTarget {
@@ -53,11 +52,10 @@ private final class ConfigStore {
         let end = nextProfileIndex(after: section.start)
         var values = ProfileValues()
         values.multiplier = Int(value("multiplier", start: section.start, end: end) ?? "") ?? 2
+        values.scaler = value("scaler", start: section.start, end: end) ?? "off"
         values.flowScale = Double(value("flow_scale", start: section.start, end: end) ?? "") ?? 1.0
         values.performanceMode = parseBool(value("performance_mode", start: section.start, end: end)) ?? false
         values.pacingMode = value("pacing_mode", start: section.start, end: end) ?? "vsync"
-        values.overridePresentMode = parseBool(value("override_present_mode", start: section.start, end: end)) ?? true
-        values.preserveSwapchainImageCount = parseBool(value("preserve_swapchain_image_count", start: section.start, end: end)) ?? false
         return values
     }
 
@@ -177,6 +175,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let profilePopup = NSPopUpButton()
 
     private let multiplierPopup = NSPopUpButton()
+    private let scalerPopup = NSPopUpButton()
     private let flowSlider = NSSlider(value: 1.0, minValue: 0.25, maxValue: 1.0, target: nil, action: nil)
     private let flowLabel = NSTextField(labelWithString: "")
     private let performance = NSButton(checkboxWithTitle: "Performance shader mode", target: nil, action: nil)
@@ -283,7 +282,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         content.addSubview(title)
 
         let subtitle = NSTextField(wrappingLabelWithString:
-            "Live settings for a running lsfg-metal process. Changes are saved to the profile and, when a target is selected, pushed directly into the running process.")
+            "Companion settings for upstream itsOwen/lsfg-metal. The app edits ~/.config/lsfg-metal/conf.toml; restart the game after changes.")
         subtitle.font = .systemFont(ofSize: 12)
         subtitle.textColor = .secondaryLabelColor
         subtitle.frame = NSRect(x: 30, y: 516, width: 620, height: 38)
@@ -299,24 +298,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         configPathLabel.frame = NSRect(x: 160, y: 482, width: 500, height: 22)
         content.addSubview(configPathLabel)
 
-        let targetTitle = NSTextField(labelWithString: "Live target")
-        targetTitle.font = .systemFont(ofSize: 13, weight: .semibold)
-        targetTitle.frame = NSRect(x: 30, y: 437, width: 110, height: 20)
-        content.addSubview(targetTitle)
+        let engineLabel = NSTextField(labelWithString: "Engine")
+        engineLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        engineLabel.frame = NSRect(x: 30, y: 437, width: 110, height: 20)
+        content.addSubview(engineLabel)
 
-        targetPopup.frame = NSRect(x: 150, y: 433, width: 315, height: 28)
-        targetPopup.target = self
-        targetPopup.action = #selector(targetChanged)
-        targetPopup.addItem(withTitle: "Config only")
-        content.addSubview(targetPopup)
-
-        let revertLive = NSButton(title: "Revert Live", target: self, action: #selector(revertLivePressed))
-        revertLive.frame = NSRect(x: 475, y: 433, width: 100, height: 28)
-        content.addSubview(revertLive)
-
-        let targetRefresh = NSButton(title: "Refresh", target: self, action: #selector(refreshTargetsPressed))
-        targetRefresh.frame = NSRect(x: 585, y: 433, width: 65, height: 28)
-        content.addSubview(targetRefresh)
+        let engineValue = NSTextField(labelWithString: "itsOwen/lsfg-metal main")
+        engineValue.font = .systemFont(ofSize: 12)
+        engineValue.textColor = .secondaryLabelColor
+        engineValue.frame = NSRect(x: 150, y: 437, width: 315, height: 20)
+        content.addSubview(engineValue)
 
         let profileTitle = NSTextField(labelWithString: "Profile")
         profileTitle.font = .systemFont(ofSize: 13, weight: .semibold)
@@ -347,16 +338,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         multiplierPopup.frame = NSRect(x: 180, y: 198, width: 120, height: 28)
         card.addSubview(multiplierPopup)
 
-        addLabel("Flow scale", x: 22, y: 158, in: card)
+        addLabel("Scaler", x: 22, y: 158, in: card)
+        scalerPopup.addItems(withTitles: ["Off", "MetalFX"])
+        scalerPopup.target = self
+        scalerPopup.action = #selector(scalerChanged)
+        scalerPopup.frame = NSRect(x: 180, y: 154, width: 150, height: 28)
+        card.addSubview(scalerPopup)
+
+        addLabel("Flow scale", x: 350, y: 158, in: card)
         flowSlider.isContinuous = false
         flowSlider.target = self
         flowSlider.action = #selector(flowChanged)
-        flowSlider.frame = NSRect(x: 180, y: 154, width: 300, height: 24)
+        flowSlider.frame = NSRect(x: 430, y: 154, width: 130, height: 24)
         card.addSubview(flowSlider)
 
         flowLabel.alignment = .right
         flowLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
-        flowLabel.frame = NSRect(x: 500, y: 154, width: 90, height: 24)
+        flowLabel.frame = NSRect(x: 565, y: 154, width: 45, height: 24)
         card.addSubview(flowLabel)
 
         performance.target = self
@@ -371,18 +369,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         card.addSubview(pacingPopup)
         addLabel("Pacing", x: 22, y: 78, in: card)
 
-        overridePresent.target = self
-        overridePresent.action = #selector(overrideChanged)
-        overridePresent.frame = NSRect(x: 20, y: 40, width: 300, height: 24)
-        card.addSubview(overridePresent)
-
-        preserveCount.target = self
-        preserveCount.action = #selector(preserveChanged)
-        preserveCount.frame = NSRect(x: 322, y: 40, width: 280, height: 24)
-        card.addSubview(preserveCount)
-
         let hint = NSTextField(wrappingLabelWithString:
-            "A selected live target is updated through the running shim's local control socket. This also works when the game was launched with LSFGM_ENV=1.")
+            "Upstream main settings are applied from the profile file on the next game launch. No shim patch or private IPC is used.")
         hint.font = .systemFont(ofSize: 11)
         hint.textColor = .secondaryLabelColor
         hint.frame = NSRect(x: 28, y: 82, width: 620, height: 28)
@@ -461,18 +449,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         suppress = true
         let multiplierIndex = max(0, min(3, values.multiplier - 1))
         multiplierPopup.selectItem(at: multiplierIndex)
+        scalerPopup.selectItem(at: values.scaler.lowercased() == "metalfx" ? 1 : 0)
         flowSlider.doubleValue = min(1.0, max(0.25, values.flowScale))
         flowLabel.stringValue = String(format: "%.0f%%", values.flowScale * 100.0)
         performance.state = values.performanceMode ? .on : .off
         pacingPopup.selectItem(at: values.pacingMode.lowercased() == "adaptive" ? 1 : 0)
-        overridePresent.state = values.overridePresentMode ? .on : .off
-        preserveCount.state = values.preserveSwapchainImageCount ? .on : .off
         multiplierPopup.isEnabled = true
+        scalerPopup.isEnabled = true
         flowSlider.isEnabled = true
         performance.isEnabled = true
         pacingPopup.isEnabled = true
-        overridePresent.isEnabled = true
-        preserveCount.isEnabled = true
+
         suppress = false
     }
 
@@ -481,122 +468,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return index >= 0 && index < profileSections.count ? profileSections[index] : nil
     }
 
-    private var selectedTargetPID: Int? {
-        let index = targetPopup.indexOfSelectedItem
-        guard index > 0 else { return nil }
-        let targetIndex = index - 1
-        return targetIndex >= 0 && targetIndex < liveTargets.count ? liveTargets[targetIndex].pid : nil
-    }
+    private var selectedTargetPID: Int? { nil }
 
-    private func parseLiveTargets(_ text: String) -> [LiveTarget] {
-        text.split(separator: "\n").compactMap { raw in
-            let parts = raw.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
-            guard parts.count >= 8, let pid = Int(parts[0]) else { return nil }
-            let profile = parts[1].hasPrefix("profile=")
-                ? String(parts[1].dropFirst("profile=".count))
-                : parts[1]
-            let values = ProfileValues(
-                multiplier: Int(parts[2]) ?? 2,
-                flowScale: Double(parts[3]) ?? 1.0,
-                performanceMode: parts[4] == "1",
-                pacingMode: parts[5],
-                overridePresentMode: parts[6] == "1",
-                preserveSwapchainImageCount: parts[7] == "1"
-            )
-            return LiveTarget(pid: pid, profile: profile, values: values)
-        }
-    }
-
-    private func refreshLiveTargets() {
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let self else { return }
-            let result = self.runHelper(["list"])
-            let targets: [LiveTarget] = {
-                guard case .success(let output) = result else { return [] }
-                return self.parseLiveTargets(output)
-            }()
-
-            DispatchQueue.main.async {
-                let previousPID = self.selectedTargetPID
-                self.liveTargets = targets
-                self.targetPopup.removeAllItems()
-                self.targetPopup.addItem(withTitle: "Config only")
-                for target in targets {
-                    self.targetPopup.addItem(withTitle: "PID \(target.pid) — \(target.profile)")
-                }
-
-                if let previousPID, let index = targets.firstIndex(where: { $0.pid == previousPID }) {
-                    self.targetPopup.selectItem(at: index + 1)
-                    self.applyLiveTargetToControls(targets[index])
-                } else {
-                    self.targetPopup.selectItem(at: 0)
-                }
-            }
-        }
-    }
-
-    private func applyLiveTargetToControls(_ target: LiveTarget) {
-        selectCurrentValues(target.values)
-        profileInfo.stringValue = "Live target PID \(target.pid) — \(target.profile)"
-        status("Connected to the running lsfg-metal process.", error: false)
-    }
-
-    private func write(key: String, value: String, description: String) {
-        guard !suppress else { return }
-
-        var liveTargetAfter: LiveTarget?
-        if let pid = selectedTargetPID {
-            switch runHelper(["set", String(pid), "\(key)=\(value)"]) {
-            case .success(let output):
-                if output.hasPrefix("ERR ") {
-                    status(String(output.dropFirst(4)), error: true)
-                    return
-                }
-                if output.hasPrefix("OK ") {
-                    liveTargetAfter = parseLiveTargets("\(pid)\t" + String(output.dropFirst(3))).first
-                }
-            case .failure(let error):
-                status(error.localizedDescription, error: true)
-                return
-            }
-        }
-
-        guard let section = currentSection() else {
-            if let liveTargetAfter {
-                applyLiveTargetToControls(liveTargetAfter)
-            }
-            status(description + " applied live.", error: false)
-            return
-        }
-
-        do {
-            try store.set(key: key, value: value, in: section)
-            lastModificationDate = modificationDate()
-
-            if let liveTargetAfter,
-               let index = liveTargets.firstIndex(where: { $0.pid == liveTargetAfter.pid }) {
-                liveTargets[index] = liveTargetAfter
-            }
-
-            reloadConfig(showError: false)
-
-            if let liveTargetAfter {
-                applyLiveTargetToControls(liveTargetAfter)
-                status("\(description) — applied live to PID \(liveTargetAfter.pid) and saved to config.", error: false)
-            } else {
-                status("\(description) — saved to config; a running file-mode process reloads it at the next frame boundary.", error: false)
-            }
-        } catch {
-            status(error.localizedDescription, error: true)
-        }
-    }
-
-    private func poll() {
-        pollConfig()
-        refreshLiveTargets()
-    }
-
-    private func pollConfig() {
+    private func refreshLiveTargets() {}
+    
+        private func pollConfig() {
         guard let date = modificationDate(), date != lastModificationDate else { return }
         lastModificationDate = date
         reloadConfig(showError: false)
@@ -672,6 +548,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let index = max(0, min(3, multiplierPopup.indexOfSelectedItem))
         let value = index + 1
         write(key: "multiplier", value: "\(value)", description: "Multiplier changed to \(value)×")
+    }
+
+
+    @objc private func scalerChanged() {
+        let enabled = scalerPopup.indexOfSelectedItem == 1
+        write(
+            key: "scaler",
+            value: enabled ? ""metalfx"" : ""off"",
+            description: enabled ? "MetalFX scaler enabled" : "MetalFX scaler disabled"
+        )
     }
 
     @objc private func flowChanged() {
