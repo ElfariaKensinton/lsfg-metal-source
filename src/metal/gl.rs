@@ -117,7 +117,7 @@ pub fn install() {
             flush_hook as *const (),
         ))
     };
-    set_enabled(true);
+    set_enabled(setup().is_some_and(|s| s.profile.multiplier > 1));
 }
 
 // one shared surface: an iosurface seen by opengl, metal and vulkan
