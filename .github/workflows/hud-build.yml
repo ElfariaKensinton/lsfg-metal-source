@@ -21,8 +21,14 @@ jobs:
       - name: Checkout GUI companions
         uses: actions/checkout@v4
 
-      - name: Checkout upstream engine
-        run: git clone --depth 1 --branch main https://github.com/itsOwen/lsfg-metal.git upstream-engine
+      - name: Download upstream engine source
+        run: |
+          set -euo pipefail
+          rm -rf upstream-engine /tmp/lsfg-metal-upstream.tar.gz /tmp/lsfg-metal-upstream-src
+          curl --fail --location --retry 3 --retry-delay 2             https://codeload.github.com/itsOwen/lsfg-metal/tar.gz/refs/heads/main             --output /tmp/lsfg-metal-upstream.tar.gz
+          mkdir -p /tmp/lsfg-metal-upstream-src
+          tar -xzf /tmp/lsfg-metal-upstream.tar.gz -C /tmp/lsfg-metal-upstream-src
+          mv /tmp/lsfg-metal-upstream-src/lsfg-metal-main upstream-engine
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
