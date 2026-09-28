@@ -21,7 +21,7 @@ APP="dist/LSFG Metal Control.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp control/.build/release/LSFGMetalControl "$APP/Contents/MacOS/LSFGMetalControl"
-cp target/release/lsfg-control "$APP/Contents/Resources/lsfg-control"
+cp target/x86_64-apple-darwin/release/lsfg-control "$APP/Contents/Resources/lsfg-control"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
