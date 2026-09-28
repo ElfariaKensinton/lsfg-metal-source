@@ -303,14 +303,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         targetTitle.frame = NSRect(x: 30, y: 437, width: 110, height: 20)
         content.addSubview(targetTitle)
 
-        targetPopup.frame = NSRect(x: 150, y: 433, width: 355, height: 28)
+        targetPopup.frame = NSRect(x: 150, y: 433, width: 315, height: 28)
         targetPopup.target = self
         targetPopup.action = #selector(targetChanged)
         targetPopup.addItem(withTitle: "Config only")
         content.addSubview(targetPopup)
 
+        let revertLive = NSButton(title: "Revert Live", target: self, action: #selector(revertLivePressed))
+        revertLive.frame = NSRect(x: 475, y: 433, width: 100, height: 28)
+        content.addSubview(revertLive)
+
         let targetRefresh = NSButton(title: "Refresh", target: self, action: #selector(refreshTargetsPressed))
-        targetRefresh.frame = NSRect(x: 520, y: 433, width: 130, height: 28)
+        targetRefresh.frame = NSRect(x: 585, y: 433, width: 65, height: 28)
         content.addSubview(targetRefresh)
 
         let profileTitle = NSTextField(labelWithString: "Profile")
@@ -610,6 +614,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func refreshTargetsPressed() {
         refreshLiveTargets()
+    }
+
+    @objc private func revertLivePressed() {
+        guard let pid = selectedTargetPID else {
+            status("Select a running target first.", error: true)
+            return
+        }
+
+        switch runHelper(["clear", String(pid)]) {
+        case .success(let output):
+            guard !output.hasPrefix("ERR ") else {
+                status(String(output.dropFirst(4)), error: true)
+                return
+            }
+            if let section = currentSection() {
+                selectCurrentValues(store.values(for: section))
+            }
+            status("Live override cleared for PID (pid). The config profile is active again.", error: false)
+            refreshLiveTargets()
+        case .failure(let error):
+            status(error.localizedDescription, error: true)
+        }
     }
 
     @objc private func targetChanged(_ sender: Any?) {
