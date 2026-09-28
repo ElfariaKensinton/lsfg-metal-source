@@ -1,0 +1,37 @@
+name: upstream-based companion build
+
+on:
+  push:
+    branches:
+      - "feature/hud-upstream"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Validate scripts
+        run: |
+          sh -n Scripts/build-hud.sh
+          sh -n Scripts/build-control.sh
+
+      - name: Build HUD
+        run: ./Scripts/build-hud.sh
+
+      - name: Build control app
+        run: ./Scripts/build-control.sh
+
+      - name: Upload companions
+        uses: actions/upload-artifact@v4
+        with:
+          name: lsfg-metal-upstream-companions
+          path: |
+            dist/LSFG Metal Control.app
+            dist/tools/LSFGMetalHUD
+          if-no-files-found: error
