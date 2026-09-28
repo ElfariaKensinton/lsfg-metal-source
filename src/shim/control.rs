@@ -104,7 +104,7 @@ fn write_response(stream: &mut UnixStream, text: &str) -> Result<(), String> {
 fn encode_profile(p: &settings::Profile) -> String {
     format!(
         "profile={}	multiplier={}	flow_scale={:.3}	performance_mode={}	pacing_mode={}	override_present_mode={}	preserve_swapchain_image_count={}",
-        p.name.replace('	', " "),
+        p.name.replace('\t', " "),
         p.multiplier,
         p.flow_scale,
         p.performance_mode as u8,
