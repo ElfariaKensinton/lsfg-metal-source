@@ -8,12 +8,14 @@ command -v swift >/dev/null 2>&1 || {
   exit 1
 }
 
+cargo build --release --bin lsfg-control
 swift build --package-path control -c release
 
 APP="dist/LSFG Metal Control.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp control/.build/release/LSFGMetalControl "$APP/Contents/MacOS/LSFGMetalControl"
+cp target/release/lsfg-control "$APP/Contents/Resources/lsfg-control"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -34,6 +36,6 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
-codesign -s - -f "$APP"
+codesign --force --deep --sign - "$APP"
 
 echo "built $APP"
