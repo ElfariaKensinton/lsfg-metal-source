@@ -114,7 +114,7 @@ private final class ConfigStore {
             raw = String(raw[..<hash]).trimmingCharacters(in: .whitespaces)
         }
 
-        if raw.count >= 2, raw.first == """, raw.last == """ {
+        if raw.count >= 2, raw.first == Character("\""), raw.last == Character("\"") {
             return String(raw.dropFirst().dropLast())
         }
         if raw.count >= 2, raw.first == "'", raw.last == "'" {
