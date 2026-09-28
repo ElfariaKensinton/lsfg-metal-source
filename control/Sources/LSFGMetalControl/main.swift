@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import UniformTypeIdentifiers
 
 private struct ProfileSection {
     let name: String
@@ -717,7 +718,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func chooseConfig() {
         let panel = NSOpenPanel()
-        panel.allowedFileTypes = ["toml"]
+        if let toml = UTType(filenameExtension: "toml") {
+            panel.allowedContentTypes = [toml]
+        }
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = false
@@ -733,10 +736,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusLabel.stringValue = message
         statusLabel.textColor = error ? .systemRed : .systemGreen
     }
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        app.setActivationPolicy(.regular)
+        app.run()
+    }
 }
-
-let app = NSApplication.shared
-let delegate = AppDelegate()
-app.delegate = delegate
-app.setActivationPolicy(.regular)
-app.run()
