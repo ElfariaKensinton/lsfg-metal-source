@@ -7,6 +7,11 @@ on:
       - "control/**"
       - "Scripts/build-hud.sh"
       - "Scripts/build-control.sh"
+      - "Scripts/package.sh"
+      - "src/shim/control.rs"
+      - "src/shim/mod.rs"
+      - "src/metal/generator.rs"
+      - "src/metal/gl.rs"
       - ".github/workflows/hud-build.yml"
 
 permissions:
