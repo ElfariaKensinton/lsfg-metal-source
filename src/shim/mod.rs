@@ -378,11 +378,11 @@ impl Layer {
                     }
                     p.flow_scale = f;
                 }
-                "performance_mode" => p.performance_mode = parse_live_bool(value)?,
+                "performance_mode" => p.performance_mode = Self::parse_live_bool(value)?,
                 "pacing_mode" => p.pacing_mode = settings::PacingMode::parse(value)?,
-                "override_present_mode" => p.override_present_mode = parse_live_bool(value)?,
+                "override_present_mode" => p.override_present_mode = Self::parse_live_bool(value)?,
                 "preserve_swapchain_image_count" => {
-                    p.preserve_swapchain_image_count = parse_live_bool(value)?
+                    p.preserve_swapchain_image_count = Self::parse_live_bool(value)?
                 }
                 _ => return Err(format!("unknown live setting '{key}'")),
             }
