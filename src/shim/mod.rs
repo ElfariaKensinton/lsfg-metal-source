@@ -240,6 +240,24 @@ fn level(l: settings::LogLevel) -> log::Level {
 
 static LAYER: OnceLock<Option<Layer>> = OnceLock::new();
 
+
+pub fn refresh_runtime() {
+    if let Some(l) = layer() {
+        if let Err(e) = l.refresh() {
+            warn!("Keeping the previous frame-generation profile: {e}");
+        }
+        crate::metal::set_enabled(l.multiplier() > 1);
+    }
+}
+
+pub fn runtime_revision() -> u32 {
+    layer().map(|l| l.revision()).unwrap_or(0)
+}
+
+pub fn runtime_profile() -> Option<settings::Profile> {
+    layer().map(|l| l.profile())
+}
+
 pub fn layer() -> Option<&'static Layer> {
     LAYER
         .get_or_init(|| {
@@ -320,6 +338,16 @@ impl Layer {
     pub fn multiplier(&self) -> u32 {
         let s = self.state.lock().unwrap();
         s.config.profiles[s.profile].multiplier
+    }
+
+    // Reload the active file-backed profile so non-Vulkan front ends can observe GUI edits too.
+    pub fn refresh(&self) -> Result<bool, String> {
+        let changed = self.update()?;
+        if changed {
+            let on = self.multiplier() > 1;
+            crate::metal::set_enabled(on);
+        }
+        Ok(changed)
     }
 
     // reload on file change; true when the active profile was replaced (revision bumped)
