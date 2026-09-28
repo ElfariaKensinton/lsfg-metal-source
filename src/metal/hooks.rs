@@ -246,8 +246,10 @@ unsafe extern "C-unwind" fn next_drawable_hook(
     sel: Sel,
 ) -> *mut AnyObject {
     let layer = &*this;
+    // Pick up config-file changes before deciding whether this drawable is handled.
+    crate::shim::refresh_runtime();
     INIT.call_once(|| {
-        if super::setup().is_some_and(|s| s.profile.multiplier > 1) {
+        if crate::shim::runtime_profile().is_some_and(|p| p.multiplier > 1) {
             set_enabled(true);
             log::info("lsfg-metal metal front end active");
         }
@@ -258,7 +260,7 @@ unsafe extern "C-unwind" fn next_drawable_hook(
             layer.setMaximumDrawableCount(3);
         }
         // vsync mode presents on refresh; with the override off the game's own setting stands
-        if super::setup().is_some_and(|s| s.profile.override_present_mode)
+        if crate::shim::runtime_profile().is_some_and(|p| p.override_present_mode)
             && !layer.displaySyncEnabled()
         {
             layer.setDisplaySyncEnabled(true);
