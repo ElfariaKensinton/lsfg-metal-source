@@ -112,6 +112,21 @@ private final class ConfigStore {
         if lines.last == "" {
             lines.removeLast()
         }
+
+        // Older live-control builds could create a profile-only config without
+        // the mandatory [global] section. Repair that file before the dylib
+        // tries to parse it, otherwise the shim stays in pass-through mode.
+        if !lines.contains(where: {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines) == "[global]"
+        }) {
+            let insertAt = lines.firstIndex(where: {
+                $0.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("[[profile]]")
+            }) ?? lines.endIndex
+            lines.insert("[global]", at: insertAt)
+            lines.insert("allow_fp16 = true", at: insertAt + 1)
+            lines.insert("log_level = \"info\"", at: insertAt + 2)
+            try write()
+        }
     }
 
     func profiles() -> [ProfileSection] {
