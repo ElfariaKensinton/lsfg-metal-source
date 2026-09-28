@@ -539,12 +539,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func write(key: String, value: String, description: String) {
         guard !suppress else { return }
 
+        var liveTargetAfter: LiveTarget?
         if let pid = selectedTargetPID {
             switch runHelper(["set", String(pid), "\(key)=\(value)"]) {
             case .success(let output):
                 if output.hasPrefix("ERR ") {
                     status(String(output.dropFirst(4)), error: true)
                     return
+                }
+                if output.hasPrefix("OK ") {
+                    liveTargetAfter = parseLiveTargets("\(pid)\t" + String(output.dropFirst(3))).first
                 }
             case .failure(let error):
                 status(error.localizedDescription, error: true)
@@ -553,6 +557,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         guard let section = currentSection() else {
+            if let liveTargetAfter {
+                applyLiveTargetToControls(liveTargetAfter)
+            }
             status(description + " applied live.", error: false)
             return
         }
@@ -560,15 +567,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             try store.set(key: key, value: value, in: section)
             lastModificationDate = modificationDate()
-            if let pid = selectedTargetPID {
-                status("\(description) — applied live to PID \(pid) and saved to config.", error: false)
+
+            if let liveTargetAfter,
+               let index = liveTargets.firstIndex(where: { $0.pid == liveTargetAfter.pid }) {
+                liveTargets[index] = liveTargetAfter
+            }
+
+            reloadConfig(showError: false)
+
+            if let liveTargetAfter {
+                applyLiveTargetToControls(liveTargetAfter)
+                status("\(description) — applied live to PID \(liveTargetAfter.pid) and saved to config.", error: false)
             } else {
                 status("\(description) — saved to config; a running file-mode process reloads it at the next frame boundary.", error: false)
-            }
-            reloadConfig(showError: false)
-            if let pid = selectedTargetPID,
-               let target = liveTargets.first(where: { $0.pid == pid }) {
-                applyLiveTargetToControls(target)
             }
         } catch {
             status(error.localizedDescription, error: true)
@@ -612,7 +623,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         switch runHelper(["get", String(pid)]) {
         case .success(let output):
-            let targets = parseLiveTargets("\(pid)\t" + output.dropFirst(3))
+            let targets = parseLiveTargets("\(pid)\t" + String(output.dropFirst(3)))
             if let target = targets.first {
                 applyLiveTargetToControls(target)
             } else {
