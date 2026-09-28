@@ -8,7 +8,13 @@ command -v swift >/dev/null 2>&1 || {
   exit 1
 }
 
-cargo build --release --bin lsfg-control
+command -v rustup >/dev/null 2>&1 || {
+  echo "rustup is required to build the x86_64 macOS helper." >&2
+  exit 1
+}
+
+rustup target add x86_64-apple-darwin
+cargo build --release --target x86_64-apple-darwin --bin lsfg-control
 swift build --package-path control -c release
 
 APP="dist/LSFG Metal Control.app"
