@@ -103,7 +103,7 @@ static FLUSH: OnceLock<FlushFn> = OnceLock::new();
 
 // swizzle -[NSOpenGLContext flushBuffer]; the original is published before the swap
 pub fn install() {
-    if FLUSH.get().is_some() || setup().is_none_or(|s| s.profile.multiplier < 2) {
+    if FLUSH.get().is_some() || setup().is_none() {
         return;
     }
     let Some(m) =
