@@ -134,7 +134,6 @@ struct Surface {
 // per opengl context: index 0 holds the source frame, the rest the generated frames
 struct Context {
     extent: (u32, u32),
-    runtime_revision: u32,
     surfaces: Vec<Surface>,
     wrapper: Option<Wrapper>,
     cmd: Vec<vk::CommandBuffer>,
@@ -277,9 +276,14 @@ unsafe fn generate(
     let p = crate::shim::runtime_profile().ok_or("no active frame-generation profile")?;
     let revision = crate::shim::runtime_revision();
 
+    if front.backend.is_none() {
+        front.backend = Some(Backend::create(setup)?);
+    }
+    let b = front.backend.as_ref().unwrap();
+
     if front.runtime_revision != revision {
         for (_, old) in front.contexts.drain() {
-            old.destroy(front.backend.as_ref().unwrap_or_else(|| unreachable!()));
+            old.destroy(b);
         }
         front.failed.clear();
         front.runtime_revision = revision;
@@ -290,10 +294,6 @@ unsafe fn generate(
         present();
         return Ok(());
     }
-    if front.backend.is_none() {
-        front.backend = Some(Backend::create(setup)?);
-    }
-    let b = front.backend.as_ref().unwrap();
     if front.contexts.get(&key).is_none_or(|c| c.extent != extent) {
         if let Some(old) = front.contexts.remove(&key) {
             old.destroy(b);
@@ -303,7 +303,6 @@ unsafe fn generate(
             b,
             cgl,
             extent,
-            revision,
             p.multiplier,
             p.flow_scale,
             p.performance_mode,
@@ -408,7 +407,6 @@ impl Context {
         b: &Backend,
         cgl: *mut c_void,
         extent: (u32, u32),
-        runtime_revision: u32,
         m: u32,
         flow: f32,
         perf: bool,
@@ -417,7 +415,6 @@ impl Context {
         let d = &b.device;
         let mut c = Context {
             extent,
-            runtime_revision,
             surfaces: Vec::new(),
             wrapper: None,
             cmd: Vec::new(),
