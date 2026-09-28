@@ -259,8 +259,8 @@ pub fn layer() -> Option<&'static Layer> {
             Some(l)
         })
         .as_ref();
-    if let Some(layer) = layer {
-        control::start(layer);
+    if let Some(layer_ref) = layer {
+        control::start(layer_ref);
     }
     layer
 }
