@@ -773,6 +773,7 @@ struct Worker {
     stats: Stats,
     stats_on: bool,
     dump_dir: Option<PathBuf>,
+    runtime_revision: u32,
 }
 
 impl Worker {
@@ -796,6 +797,7 @@ impl Worker {
             dump_dir: std::env::var_os("LSFGM_METAL_DUMP")
                 .filter(|d| !d.is_empty())
                 .map(PathBuf::from),
+            runtime_revision: crate::shim::runtime_revision(),
         }
     }
 
@@ -823,6 +825,15 @@ impl Worker {
 
     fn process(&mut self, job: &mut Job) {
         job.latency.start();
+
+        crate::shim::refresh_runtime();
+        let revision = crate::shim::runtime_revision();
+        if revision != self.runtime_revision {
+            self.runtime_revision = revision;
+            self.reset();
+            self.pacer = None;
+            self.frame_pending = false;
+        }
         if job.sample.interval.is_finite() && job.sample.interval > 0.0 {
             self.stats.seconds += job.sample.interval;
             self.stats.samples += 1;
@@ -874,7 +885,8 @@ impl Worker {
             return Ok(());
         }
         self.reset();
-        let p = &self.setup.profile;
+        let p = crate::shim::runtime_profile()
+            .unwrap_or_else(|| self.setup.profile.clone());
         let m = p.multiplier;
         let adaptive = p.pacing_mode == PacingMode::Adaptive;
         let mode = if adaptive {
@@ -1059,7 +1071,13 @@ impl Worker {
                 trusted: true,
             };
         }
-        let m = self.setup.profile.multiplier;
+        let m = crate::shim::runtime_profile()
+            .map(|p| p.multiplier)
+            .unwrap_or(self.setup.profile.multiplier);
+        if m <= 1 {
+            self.present_natively(job);
+            return Ok(());
+        }
         let slots: Vec<f64> = match &mut self.pacer {
             Some(p) => p.slots(job.sample),
             None => (1..=m).map(|i| i as f64 / m as f64).collect(),
