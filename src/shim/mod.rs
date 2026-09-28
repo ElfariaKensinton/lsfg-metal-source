@@ -407,8 +407,7 @@ impl Layer {
     }
 
     pub fn multiplier(&self) -> u32 {
-        let s = self.state.lock().unwrap();
-        s.config.profiles[s.profile].multiplier
+        self.profile().multiplier
     }
 
     // Reload the active file-backed profile so non-Vulkan front ends can observe GUI edits too.
