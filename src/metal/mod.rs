@@ -19,6 +19,8 @@ pub use hooks::{forget_surface, register_layer};
 
 // metal layer swizzles plus the opengl buffer swap
 pub fn install() {
+    // Install the hooks even when the profile starts disabled so the GUI can
+    // enable frame generation later without restarting the game.
     hooks::install();
     gl::install();
 }
