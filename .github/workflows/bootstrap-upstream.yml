@@ -1,0 +1,49 @@
+name: bootstrap GUI on upstream main
+
+on:
+  push:
+    branches:
+      - "feature/hud-port"
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: macos-14
+    steps:
+      - name: Checkout GUI worktree
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: overlay
+
+      - name: Create upstream-based branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          cd overlay
+
+          git remote add upstream https://github.com/itsOwen/lsfg-metal.git
+          git fetch --no-tags upstream main
+
+          git switch --create feature/hud-upstream upstream/main
+
+          cp -R feature/hud-port/hud .
+          cp -R feature/hud-port/control .
+          mkdir -p Scripts src/bin
+          cp feature/hud-port/Scripts/build-hud.sh Scripts/build-hud.sh
+          cp feature/hud-port/Scripts/build-control.sh Scripts/build-control.sh
+          cp feature/hud-port/src/bin/lsfg-control.rs src/bin/lsfg-control.rs
+          cp feature/hud-port/.github/workflows/upstream-port.yml .github/workflows/upstream-port.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add hud control Scripts/build-hud.sh Scripts/build-control.sh src/bin/lsfg-control.rs .github/workflows/upstream-port.yml
+          git commit -m "Add LSFG Metal companion GUI on upstream main"
+
+          git push --force origin HEAD:feature/hud-upstream
