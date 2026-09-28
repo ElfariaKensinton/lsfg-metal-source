@@ -410,17 +410,21 @@ or PFM for `RGBA16Float` (`PF\n<w> <h>\n-1.0\n` then bottom-to-top RGB float32 r
 `mtlclear` smoke test, whose white square moves 8 px per frame, the generated frames must show the
 square at intermediate positions. That is the check that the output is interpolation and not a copy.
 
-## Upstream settings GUI
+## Live settings GUI
 
-The repository also includes a native macOS settings app intended for the current `itsOwen/lsfg-metal`
-configuration format. It is a companion only: it does not patch or rebuild the frame-generation engine and
-does not inject a private runtime IPC layer.
+The repository includes a native macOS settings app that controls the **running lsfg-metal dylib**.
 
-The GUI edits the standard profile file at `~/.config/lsfg-metal/conf.toml` (or the path selected in the app)
-and exposes the upstream-documented settings: multiplier, MetalFX scaler, flow scale, performance mode, and
-fixed/adaptive pacing. Restart the game after changing profile settings.
+The control path is:
 
-Build it with Swift/Xcode Command Line Tools:
+`LSFG Metal Control.app` → `/tmp/lsfg-metal-<pid>.sock` → running `libMoltenVK.dylib` → live profile state.
+
+The socket is local-only and created with mode 0600. The GUI discovers running shim processes by their PID socket, reads their current live profile, and sends `SET` or `CLEAR` commands directly to the loaded dylib.
+
+Live controls include multiplier, flow scale, performance mode, pacing, present/display-sync override, and swapchain image-count policy. Metal rebuilds its frame-generation context when the live profile revision changes. Some Vulkan swapchain-creation properties only take effect after the game recreates its swapchain.
+
+The GUI also saves the same values to the selected `conf.toml` profile for future launches.
+
+Build the full live-control package with Swift/Xcode Command Line Tools and Rust:
 
 ```sh
 Scripts/build-control.sh
@@ -429,6 +433,11 @@ Scripts/build-control.sh
 Output:
 
 `dist/LSFG Metal Control.app`
+`dist/renderers/lsfg/libMoltenVK.dylib`
+
+Keep your real MoltenVK dylib separately and point the shim at it with `LSFGM_MOLTENVK`, or place it where the packaged shim expects it.
+
+The GitHub Actions artifact is named `lsfg-metal-live-control`.
 
 ## HUD
 
