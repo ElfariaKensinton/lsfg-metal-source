@@ -8,12 +8,20 @@ command -v swift >/dev/null 2>&1 || {
   exit 1
 }
 
+command -v rustup >/dev/null 2>&1 || {
+  echo "rustup is required to build the x86_64 macOS shim." >&2
+  exit 1
+}
+
+rustup target add x86_64-apple-darwin
+cargo build --release --target x86_64-apple-darwin --lib
+./Scripts/package.sh
+
 swift build --package-path control -c release
 
 APP="dist/LSFG Metal Control.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
-
 cp control/.build/release/LSFGMetalControl "$APP/Contents/MacOS/LSFGMetalControl"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -27,8 +35,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>LSFG Metal Control</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.3.0</string>
-    <key>CFBundleVersion</key><string>0.3.0</string>
+    <key>CFBundleShortVersionString</key><string>0.4.0</string>
+    <key>CFBundleVersion</key><string>0.4.0</string>
     <key>LSMinimumSystemVersion</key><string>12.0</string>
     <key>NSHighResolutionCapable</key><true/>
 </dict>
@@ -38,3 +46,4 @@ PLIST
 codesign --force --deep --sign - "$APP"
 
 echo "built $APP"
+echo "built dist/renderers/lsfg/libMoltenVK.dylib"
