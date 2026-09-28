@@ -1,21 +1,28 @@
-name: HUD build
+name: macOS companion build
 
 on:
   pull_request:
     paths:
       - "hud/**"
+      - "control/**"
       - "Scripts/build-hud.sh"
+      - "Scripts/build-control.sh"
       - ".github/workflows/hud-build.yml"
 
 jobs:
-  build-hud:
+  build-companions:
     runs-on: macos-14
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate build script
-        run: sh -n Scripts/build-hud.sh
+      - name: Validate build scripts
+        run: |
+          sh -n Scripts/build-hud.sh
+          sh -n Scripts/build-control.sh
 
       - name: Build HUD
         run: swift build --package-path hud -c release
+
+      - name: Build settings GUI
+        run: swift build --package-path control -c release
