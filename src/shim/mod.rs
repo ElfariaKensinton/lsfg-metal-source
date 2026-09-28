@@ -391,13 +391,7 @@ impl Layer {
     }
 
 
-fn parse_live_bool(value: &str) -> Result<bool, String> {
-    match value.trim().to_ascii_lowercase().as_str() {
-        "1" | "true" => Ok(true),
-        "0" | "false" => Ok(false),
-        _ => Err("boolean value must be true/false or 1/0".into()),
-    }
-}
+
 
     // reload on file change; true when the active profile was replaced (revision bumped)
     pub fn update(&self) -> Result<bool, String> {
