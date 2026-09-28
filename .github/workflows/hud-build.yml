@@ -27,14 +27,18 @@ jobs:
           sh -n Scripts/build-hud.sh
           sh -n Scripts/build-control.sh
 
-      - name: Install x86_64 Rust target
-        run: rustup target add x86_64-apple-darwin
+      - name: Build HUD package
+        run: ./Scripts/build-hud.sh
 
-      - name: Build live control helper
-        run: cargo build --release --target x86_64-apple-darwin --bin lsfg-control
+      - name: Build settings GUI package
+        run: ./Scripts/build-control.sh
 
-      - name: Build HUD
-        run: swift build --package-path hud -c release
-
-      - name: Build settings GUI
-        run: swift build --package-path control -c release
+      - name: Upload macOS companion builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: lsfg-metal-macos-companions
+          path: |
+            dist/LSFG Metal Control.app
+            dist/tools/LSFGMetalHUD
+          if-no-files-found: error
+          compression-level: 6
