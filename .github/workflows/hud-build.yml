@@ -22,11 +22,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Checkout upstream engine
-        uses: actions/checkout@v4
-        with:
-          repository: itsOwen/lsfg-metal
-          ref: main
-          path: upstream-engine
+        run: git clone --depth 1 --branch main https://github.com/itsOwen/lsfg-metal.git upstream-engine
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
