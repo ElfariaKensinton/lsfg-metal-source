@@ -410,6 +410,24 @@ or PFM for `RGBA16Float` (`PF\n<w> <h>\n-1.0\n` then bottom-to-top RGB float32 r
 `mtlclear` smoke test, whose white square moves 8 px per frame, the generated frames must show the
 square at intermediate positions. That is the check that the output is interpolation and not a copy.
 
+## Live settings GUI
+
+The repository also includes a native macOS settings app that edits the same profile file used by the shim. Controls are written immediately, so a running process can pick up multiplier, flow scale, performance mode, pacing, present-mode override, and swapchain-count settings without environment-variable editing.
+
+Build it with Swift/Xcode Command Line Tools:
+
+```sh
+Scripts/build-control.sh
+```
+
+Output:
+
+`dist/LSFG Metal Control.app`
+
+The GUI defaults to `$HOME/.config/lsfg-metal/conf.toml` (or `XDG_CONFIG_HOME/lsfg-metal/conf.toml`) and lets you choose another TOML file. Select the profile used by the running game; the shim's file watcher then reloads that profile at frame boundaries.
+
+On the Vulkan fixed path, multiplier/flow/performance/present-mode changes are consumed by the next presents. The Metal and OpenGL front ends also refresh the profile on frame boundaries and rebuild their generation context when those values change. Swapchain-creation-only behavior, such as changing the image-count policy or enabling Vulkan adaptive pacing where a new proxy swapchain is required, may take effect on the next swapchain recreation.
+
 ## HUD
 
 The repository now includes the macOS HUD used by the LSFG Metal installer as a standalone companion tool.
