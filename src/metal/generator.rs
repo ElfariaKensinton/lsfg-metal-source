@@ -825,6 +825,15 @@ impl Worker {
 
     fn process(&mut self, job: &mut Job) {
         job.latency.start();
+
+        let revision = crate::shim::layer().map(|l| l.revision()).unwrap_or(0);
+        if revision != self.runtime_revision {
+            self.runtime_revision = revision;
+            self.reset();
+            self.pacer = None;
+            self.frame_pending = false;
+        }
+
         if job.sample.interval.is_finite() && job.sample.interval > 0.0 {
             self.stats.seconds += job.sample.interval;
             self.stats.samples += 1;
