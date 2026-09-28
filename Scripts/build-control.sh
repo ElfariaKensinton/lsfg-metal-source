@@ -9,12 +9,19 @@ command -v swift >/dev/null 2>&1 || {
 }
 
 command -v rustup >/dev/null 2>&1 || {
-  echo "rustup is required to build the x86_64 macOS helper." >&2
+  echo "rustup is required to build the x86_64 macOS shim and helper." >&2
   exit 1
 }
 
 rustup target add x86_64-apple-darwin
+
+# Build the actual injected shim plus the local live-control helper.
+cargo build --release --target x86_64-apple-darwin --lib
 cargo build --release --target x86_64-apple-darwin --bin lsfg-control
+
+# Package the shim as libMoltenVK.dylib for Wine/NotProton.
+./Scripts/package.sh
+
 swift build --package-path control -c release
 
 APP="dist/LSFG Metal Control.app"
@@ -45,3 +52,4 @@ PLIST
 codesign --force --deep --sign - "$APP"
 
 echo "built $APP"
+echo "built dist/renderers/lsfg/libMoltenVK.dylib"
