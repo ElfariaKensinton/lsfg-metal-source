@@ -27,8 +27,11 @@ jobs:
           sh -n Scripts/build-hud.sh
           sh -n Scripts/build-control.sh
 
+      - name: Install x86_64 Rust target
+        run: rustup target add x86_64-apple-darwin
+
       - name: Build live control helper
-        run: cargo build --release --bin lsfg-control
+        run: cargo build --release --target x86_64-apple-darwin --bin lsfg-control
 
       - name: Build HUD
         run: swift build --package-path hud -c release
