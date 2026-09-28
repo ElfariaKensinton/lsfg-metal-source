@@ -22,15 +22,21 @@ jobs:
       - name: Build HUD
         run: ./Scripts/build-hud.sh
 
-      - name: Build settings app
+      - name: Build settings app and controllable dylib
         run: ./Scripts/build-control.sh
 
-      - name: Upload companion apps
+      - name: Verify controllable dylib
+        run: |
+          file dist/renderers/lsfg/libMoltenVK.dylib
+          test -s dist/renderers/lsfg/libMoltenVK.dylib
+
+      - name: Upload companion apps and controllable dylib
         uses: actions/upload-artifact@v4
         with:
-          name: lsfg-metal-upstream-companions
+          name: lsfg-metal-live-control
           path: |
             dist/LSFG Metal Control.app
             dist/tools/LSFGMetalHUD
+            dist/renderers/lsfg
           if-no-files-found: error
           compression-level: 6
