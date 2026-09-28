@@ -35,7 +35,9 @@ enum HUDSettingsStore {
     }
 }
 
-// Ported from the LSFG Metal Installer HUD implementation; kept standalone so the runtime can ship the same HUD logic.\n\nenum HUDSettingsStyle {
+// Ported from the LSFG Metal Installer HUD implementation; kept standalone so the runtime can ship the same HUD logic.
+
+enum HUDSettingsStyle {
     static let accent = NSColor(calibratedRed: 103.0 / 255.0, green: 100.0 / 255.0, blue: 100.0 / 255.0, alpha: 1)
     static let textPrimary = NSColor(calibratedWhite: 0.12, alpha: 1)
     static let accentLight = NSColor(calibratedRed: 128.0 / 255.0, green: 124.0 / 255.0, blue: 124.0 / 255.0, alpha: 1)
