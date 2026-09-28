@@ -327,6 +327,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func reloadConfig(showError: Bool) {
+        let previousName = currentSection()?.name
         do {
             try store.reload()
             lastModificationDate = modificationDate()
@@ -335,7 +336,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             profilePopup.addItems(withTitles: profileSections.map(\.name))
             profilePopup.isEnabled = !profileSections.isEmpty
             if !profileSections.isEmpty {
-                profilePopup.selectItem(at: 0)
+                let preferred = previousName.flatMap { name in
+                    profileSections.firstIndex(where: { $0.name == name })
+                } ?? 0
+                profilePopup.selectItem(at: preferred)
                 profileChanged(profilePopup)
             } else {
                 clearControls()
@@ -384,11 +388,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             try store.set(key: key, value: value, in: section)
             lastModificationDate = modificationDate()
-            status("\(description) — live on the next frame boundary.", error: false)
             reloadConfig(showError: false)
-            if let refreshed = currentSection() {
-                selectCurrentValues(store.values(for: refreshed))
-            }
+            status("\(description) — live on the next frame boundary.", error: false)
         } catch {
             status(error.localizedDescription, error: true)
         }
