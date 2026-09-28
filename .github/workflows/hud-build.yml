@@ -13,10 +13,45 @@ on:
       - "Scripts/package.sh"
       - ".github/workflows/hud-build.yml"
 
+permissions:
+  contents: write
+
 jobs:
   build-companions:
     runs-on: macos-14
     steps:
+      - name: Bootstrap upstream-based GUI branch
+        if: github.event_name == 'pull_request' && github.head_ref == 'feature/hud-port'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git clone --no-checkout "$GITHUB_SERVER_URL/ElfariaKensinton/lsfg-metal-source.git" "$RUNNER_TEMP/overlay"
+          cd "$RUNNER_TEMP/overlay"
+          git remote add upstream https://github.com/itsOwen/lsfg-metal.git
+          git fetch --no-tags upstream main
+          git checkout --force -B feature/hud-upstream upstream/main
+
+          git clone --no-checkout "$GITHUB_SERVER_URL/ElfariaKensinton/lsfg-metal-source.git" "$RUNNER_TEMP/gui"
+          cd "$RUNNER_TEMP/gui"
+          git checkout --force "$GITHUB_SHA"
+
+          cp -R hud "$RUNNER_TEMP/overlay/hud"
+          cp -R control "$RUNNER_TEMP/overlay/control"
+          mkdir -p "$RUNNER_TEMP/overlay/Scripts" "$RUNNER_TEMP/overlay/src/bin" "$RUNNER_TEMP/overlay/.github/workflows"
+          cp Scripts/build-hud.sh "$RUNNER_TEMP/overlay/Scripts/build-hud.sh"
+          cp Scripts/build-control.sh "$RUNNER_TEMP/overlay/Scripts/build-control.sh"
+          cp src/bin/lsfg-control.rs "$RUNNER_TEMP/overlay/src/bin/lsfg-control.rs"
+          cp .github/workflows/upstream-port.yml "$RUNNER_TEMP/overlay/.github/workflows/upstream-port.yml"
+
+          cd "$RUNNER_TEMP/overlay"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add hud control Scripts/build-hud.sh Scripts/build-control.sh src/bin/lsfg-control.rs .github/workflows/upstream-port.yml
+          git commit -m "Add LSFG Metal companion GUI on upstream main" || true
+          git push --force origin HEAD:feature/hud-upstream
+
       - name: Checkout
         uses: actions/checkout@v4
 
