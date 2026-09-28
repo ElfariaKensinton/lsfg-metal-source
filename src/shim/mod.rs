@@ -366,7 +366,7 @@ impl Layer {
             match key.as_str() {
                 "multiplier" => {
                     let m: u32 = value.parse().map_err(|_| "invalid multiplier".to_string())?;
-                    if m > 4 {
+                    if !(1..=4).contains(&m) {
                         return Err("multiplier must be 1 to 4".into());
                     }
                     p.multiplier = m;
