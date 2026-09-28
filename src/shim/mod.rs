@@ -2,6 +2,7 @@
 mod chain;
 mod chain_sizes;
 mod context;
+mod control;
 mod fixed;
 mod proxy;
 mod sync;
@@ -227,6 +228,7 @@ struct LayerState {
     profile: usize,
     revision: u32,
     watcher: Option<settings::Watcher>,
+    live_profile: Option<settings::Profile>,
 }
 
 fn level(l: settings::LogLevel) -> log::Level {
@@ -256,7 +258,11 @@ pub fn layer() -> Option<&'static Layer> {
             crate::metal::init(crate::metal::Setup::new(l.profile(), allow_fp16, dll));
             Some(l)
         })
-        .as_ref()
+        .as_ref();
+    if let Some(layer) = layer {
+        control::start(layer);
+    }
+    layer
 }
 
 impl Layer {
@@ -300,13 +306,67 @@ impl Layer {
                 profile,
                 revision: 0,
                 watcher,
+                live_profile: None,
             }),
         }))
     }
 
     pub fn profile(&self) -> settings::Profile {
         let s = self.state.lock().unwrap();
-        s.config.profiles[s.profile].clone()
+        s.live_profile
+            .clone()
+            .unwrap_or_else(|| s.config.profiles[s.profile].clone())
+    }
+
+    pub(crate) fn apply_live_changes(&self, changes: &[(String, String)]) -> Result<(), String> {
+        let mut s = self.state.lock().unwrap();
+        let base = s
+            .live_profile
+            .clone()
+            .unwrap_or_else(|| s.config.profiles[s.profile].clone());
+        let mut p = base;
+
+        for (key, value) in changes {
+            match key.as_str() {
+                "multiplier" => {
+                    p.multiplier = value
+                        .parse::<u32>()
+                        .map_err(|_| "multiplier must be 1..=4".to_string())?;
+                    if !(1..=4).contains(&p.multiplier) {
+                        return Err("multiplier must be 1..=4".into());
+                    }
+                }
+                "flow_scale" => {
+                    p.flow_scale = value
+                        .parse::<f32>()
+                        .map_err(|_| "flow_scale must be 0.25..=1.0".to_string())?;
+                    if !(0.25..=1.0).contains(&p.flow_scale) {
+                        return Err("flow_scale must be 0.25..=1.0".into());
+                    }
+                }
+                "performance_mode" => p.performance_mode = parse_live_bool(value)?,
+                "pacing_mode" => p.pacing_mode = settings::PacingMode::parse(value)?,
+                "override_present_mode" => p.override_present_mode = parse_live_bool(value)?,
+                "preserve_swapchain_image_count" => {
+                    p.preserve_swapchain_image_count = parse_live_bool(value)?
+                }
+                _ => return Err(format!("unsupported live key: {key}")),
+            }
+        }
+
+        s.live_profile = Some(p.clone());
+        s.revision = s.revision.wrapping_add(1);
+        crate::metal::set_enabled(p.multiplier > 1);
+        Ok(())
+    }
+
+    pub(crate) fn clear_live_profile(&self) {
+        let mut s = self.state.lock().unwrap();
+        if s.live_profile.take().is_some() {
+            s.revision = s.revision.wrapping_add(1);
+        }
+        let enabled = s.config.profiles[s.profile].multiplier > 1;
+        crate::metal::set_enabled(enabled);
     }
 
     pub fn config<R>(&self, f: impl FnOnce(&settings::Config) -> R) -> R {
@@ -318,9 +378,17 @@ impl Layer {
     }
 
     pub fn multiplier(&self) -> u32 {
-        let s = self.state.lock().unwrap();
-        s.config.profiles[s.profile].multiplier
+        self.profile().multiplier
     }
+
+
+fn parse_live_bool(value: &str) -> Result<bool, String> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "1" | "true" => Ok(true),
+        "0" | "false" => Ok(false),
+        _ => Err("boolean value must be true/false or 1/0".into()),
+    }
+}
 
     // reload on file change; true when the active profile was replaced (revision bumped)
     pub fn update(&self) -> Result<bool, String> {
