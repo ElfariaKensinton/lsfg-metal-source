@@ -35,3 +35,5 @@ jobs:
             dist/LSFG Metal Control.app
             dist/tools/LSFGMetalHUD
           if-no-files-found: error
+
+# companion-only workflow; the frame-generation engine stays on upstream main
