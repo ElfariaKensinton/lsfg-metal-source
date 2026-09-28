@@ -243,10 +243,16 @@ static LAYER: OnceLock<Option<Layer>> = OnceLock::new();
 
 pub fn refresh_runtime() {
     if let Some(l) = layer() {
-        if let Err(e) = l.refresh() {
-            warn!("Keeping the previous frame-generation profile: {e}");
+        let changed = match l.refresh() {
+            Ok(changed) => changed,
+            Err(e) => {
+                warn!("Keeping the previous frame-generation profile: {e}");
+                false
+            }
+        };
+        if changed {
+            crate::metal::set_enabled(l.multiplier() > 1);
         }
-        crate::metal::set_enabled(l.multiplier() > 1);
     }
 }
 
