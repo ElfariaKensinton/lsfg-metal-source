@@ -655,3 +655,5 @@ observable behaviour rather than from any existing sources or projects.
 
 This project is MIT licensed. See `LICENSE`. The shader package it loads is not covered by that
 license and remains the property of Lossless Scaling.
+
+The macOS CI uploads the built companions as a GitHub Actions artifact named `lsfg-metal-macos-companions`.
