@@ -773,6 +773,7 @@ struct Worker {
     stats: Stats,
     stats_on: bool,
     dump_dir: Option<PathBuf>,
+    runtime_revision: u32,
 }
 
 impl Worker {
@@ -796,6 +797,7 @@ impl Worker {
             dump_dir: std::env::var_os("LSFGM_METAL_DUMP")
                 .filter(|d| !d.is_empty())
                 .map(PathBuf::from),
+            runtime_revision: crate::shim::layer().map(|l| l.revision()).unwrap_or(0),
         }
     }
 
@@ -874,7 +876,8 @@ impl Worker {
             return Ok(());
         }
         self.reset();
-        let p = &self.setup.profile;
+        let live = crate::shim::layer().map(|l| l.profile()).unwrap_or_else(|| self.setup.profile.clone());
+        let p = &live;
         let m = p.multiplier;
         let adaptive = p.pacing_mode == PacingMode::Adaptive;
         let mode = if adaptive {
@@ -1059,7 +1062,9 @@ impl Worker {
                 trusted: true,
             };
         }
-        let m = self.setup.profile.multiplier;
+        let m = crate::shim::layer()
+            .map(|l| l.profile().multiplier)
+            .unwrap_or(self.setup.profile.multiplier);
         let slots: Vec<f64> = match &mut self.pacer {
             Some(p) => p.slots(job.sample),
             None => (1..=m).map(|i| i as f64 / m as f64).collect(),
