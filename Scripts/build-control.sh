@@ -8,19 +8,13 @@ command -v swift >/dev/null 2>&1 || {
   exit 1
 }
 
-command -v rustup >/dev/null 2>&1 || {
-  echo "rustup is required to build the x86_64 macOS shim and helper." >&2
+command -v rustc >/dev/null 2>&1 || {
+  echo "rustc is required to build the control helper." >&2
   exit 1
 }
 
-rustup target add x86_64-apple-darwin
-
-# Build the actual injected shim plus the local live-control helper.
-cargo build --release --target x86_64-apple-darwin --lib
-cargo build --release --target x86_64-apple-darwin --bin lsfg-control
-
-# Package the shim as libMoltenVK.dylib for Wine/NotProton.
-./Scripts/package.sh
+mkdir -p target/control
+rustc --edition=2021 -O src/bin/lsfg-control.rs -o target/control/lsfg-control
 
 swift build --package-path control -c release
 
@@ -28,7 +22,7 @@ APP="dist/LSFG Metal Control.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp control/.build/release/LSFGMetalControl "$APP/Contents/MacOS/LSFGMetalControl"
-cp target/x86_64-apple-darwin/release/lsfg-control "$APP/Contents/Resources/lsfg-control"
+cp target/control/lsfg-control "$APP/Contents/Resources/lsfg-control"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -41,8 +35,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>LSFG Metal Control</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.1.0</string>
-    <key>CFBundleVersion</key><string>0.1.0</string>
+    <key>CFBundleShortVersionString</key><string>0.2.0</string>
+    <key>CFBundleVersion</key><string>0.2.0</string>
     <key>LSMinimumSystemVersion</key><string>12.0</string>
     <key>NSHighResolutionCapable</key><true/>
 </dict>
@@ -52,4 +46,3 @@ PLIST
 codesign --force --deep --sign - "$APP"
 
 echo "built $APP"
-echo "built dist/renderers/lsfg/libMoltenVK.dylib"
