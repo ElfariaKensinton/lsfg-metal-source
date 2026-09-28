@@ -283,8 +283,10 @@ pub fn layer() -> Option<&'static Layer> {
             Some(l)
         })
         .as_ref();
-    if let Some(layer) = layer {
-        control::start(layer);
+    if std::env::var_os("LSFGM_CONTROL").is_some() {
+        if let Some(layer) = layer {
+            control::start(layer);
+        }
     }
     layer
 }
