@@ -137,10 +137,9 @@ private final class ConfigStore {
         active_in = "000000"
         pacing_mode = "vsync"
         multiplier = 2
+        scaler = "off"
         flow_scale = 1.0
         performance_mode = false
-        override_present_mode = true
-        preserve_swapchain_image_count = false
         """
         try defaultText.write(to: url, atomically: true, encoding: .utf8)
     }
