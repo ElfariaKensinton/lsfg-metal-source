@@ -5,6 +5,9 @@ on:
     paths:
       - "hud/**"
       - "control/**"
+      - "src/shim/**"
+      - "src/bin/lsfg-control.rs"
+      - "Cargo.toml"
       - "Scripts/build-hud.sh"
       - "Scripts/build-control.sh"
       - ".github/workflows/hud-build.yml"
@@ -16,10 +19,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Validate build scripts
         run: |
           sh -n Scripts/build-hud.sh
           sh -n Scripts/build-control.sh
+
+      - name: Build live control helper
+        run: cargo build --release --bin lsfg-control
 
       - name: Build HUD
         run: swift build --package-path hud -c release
