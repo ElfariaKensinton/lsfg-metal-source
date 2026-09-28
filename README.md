@@ -412,7 +412,12 @@ square at intermediate positions. That is the check that the output is interpola
 
 ## Live settings GUI
 
-The repository also includes a native macOS settings app that edits the same profile file used by the shim. Controls are written immediately, so a running process can pick up multiplier, flow scale, performance mode, pacing, present-mode override, and swapchain-count settings without environment-variable editing.
+The repository also includes a native macOS settings app that edits the same profile file used by the shim and
+can push settings directly into an already-running shim process.
+
+Controls include multiplier, flow scale, performance mode, pacing, present-mode/display-sync override, and
+swapchain image-count policy. Changes are applied immediately at the next frame boundary; no environment-variable
+editing is required.
 
 Build it with Swift/Xcode Command Line Tools:
 
@@ -424,9 +429,20 @@ Output:
 
 `dist/LSFG Metal Control.app`
 
-The GUI defaults to `$HOME/.config/lsfg-metal/conf.toml` (or `XDG_CONFIG_HOME/lsfg-metal/conf.toml`) and lets you choose another TOML file. Select the profile used by the running game; the shim's file watcher then reloads that profile at frame boundaries.
+The GUI defaults to `$HOME/.config/lsfg-metal/conf.toml` (or `XDG_CONFIG_HOME/lsfg-metal/conf.toml`) and
+lets you choose another TOML file.
 
-On the Vulkan fixed path, multiplier/flow/performance/present-mode changes are consumed by the next presents. The Metal and OpenGL front ends also refresh the profile on frame boundaries and rebuild their generation context when those values change. Swapchain-creation-only behavior, such as changing the image-count policy or enabling Vulkan adaptive pacing where a new proxy swapchain is required, may take effect on the next swapchain recreation.
+For running processes the GUI uses a local per-process Unix socket:
+
+`/tmp/lsfg-metal-<pid>.sock`
+
+The socket is created with mode 0600 and is local-only. This live path also works when the process was launched
+with `LSFGM_ENV=1`, where normal config-file watching is intentionally disabled.
+
+Some settings are swapchain-creation properties. In particular, changing swapchain image-count policy or
+switching a Vulkan process from fixed pacing to adaptive pacing may require the game to recreate its swapchain.
+The other live profile values are consumed at the next frame boundary.
+
 
 ## HUD
 
